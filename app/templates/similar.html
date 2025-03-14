@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск похожих изображений - Система анализа изображений{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                    <li class="breadcrumb-item active">Поиск похожих изображений</li>
+                </ol>
+            </nav>
+            <h1 class="mb-4">Поиск похожих изображений</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="bi bi-image-alt"></i> Загрузите изображение для поиска похожих</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('find_similar') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+                        <div class="mb-4">
+                            <div class="upload-drop-zone" id="dropZone">
+                                <i class="bi bi-cloud-arrow-up"></i>
+                                <p class="mb-0 fw-medium">Перетащите файл сюда или нажмите для выбора</p>
+                                <p class="text-muted small">Поддерживаемые форматы: JPG, PNG, JPEG, BMP, WEBP</p>
+                                <input type="file" name="file" id="file" class="form-control d-none" accept=".jpg,.jpeg,.png,.bmp,.webp">
+                            </div>
+                            <div id="filePreview" class="text-center mt-3" style="display: none;">
+                                <img id="previewImage" class="img-fluid rounded shadow mb-3" style="max-height: 300px;">
+                                <p id="fileName" class="fw-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="limit" class="form-label">Максимальное количество результатов</label>
+                            <select class="form-select" id="limit" name="limit">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="uploadButton">
+                                <i class="bi bi-search"></i> Найти похожие изображения
+                            </button>
+                        </div>
+                        <div class="loader" id="loader"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if image_path %}
+        <div class="row mb-4">
+            <div class="col-md-8 mx-auto">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Исходное изображение</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="{{ url_for('uploaded_file', filename=image_path) }}" alt="Исходное изображение" class="img-fluid rounded shadow" style="max-height: 300px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if results is not none %}
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-list-ul"></i> Похожие изображения ({{ results|length }})
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if results %}
+                            <div class="row">
+                                {% for result in results %}
+                                <div class="col-md-12 mb-4">
+                                    <div class="card h-100 border-primary metadata-card">
+                                        <div class="card-header bg-light">
+                                            <h5 class="card-title">{{ result.image_name }}</h5>
+                                            <span class="badge bg-primary">Релевантность: {{ result.relevance }}</span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-5">
+                                                    <!-- Отображение изображения -->
+                                                    <div class="text-center">
+                                                        <img src="{{ url_for('result_file', filename='vis_' + result.image_name) }}"
+                                                             alt="Обработанное изображение"
+                                                             class="img-fluid rounded shadow mb-3"
+                                                             style="max-height: 250px; max-width: 100%;"
+                                                             onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/image-not-found.png') }}'; this.style.opacity='0.5';">
+
+                                                        <div class="btn-group w-100 mt-2">
+                                                            <a href="{{ url_for('result_file', filename='vis_' + result.image_name) }}"
+                                                               target="_blank"
+                                                               class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-eye"></i> Просмотр
+                                                            </a>
+                                                            <a href="{{ url_for('result_file', filename='vis_' + result.image_name) }}"
+                                                               download
+                                                               class="btn btn-sm btn-outline-secondary">
+                                                                <i class="bi bi-download"></i> Скачать
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <!-- Метаданные изображения -->
+                                                    <h6 class="border-bottom pb-2 mb-3">Распознанные объекты:</h6>
+                                                    <p>
+                                                        {% if result.metadata.objects %}
+                                                            {% for obj in result.metadata.objects %}
+                                                                <span class="badge bg-info">{{ obj }}</span>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <span class="text-muted">Нет данных</span>
+                                                        {% endif %}
+                                                    </p>
+
+                                                    <h6 class="border-bottom pb-2 mb-3">Распознанный текст:</h6>
+                                                    <div class="bg-light p-3 rounded mb-3" style="max-height: 150px; overflow-y: auto;">
+                                                        {% if result.metadata.text %}
+                                                            {{ result.metadata.text }}
+                                                        {% else %}
+                                                            <span class="text-muted">Текст не распознан</span>
+                                                        {% endif %}
+                                                    </div>
+
+                                                    <h6 class="border-bottom pb-2 mb-3">Причины совпадения:</h6>
+                                                    <ul class="mb-0">
+                                                        {% for reason in result.match_reasons %}
+                                                            <li>{{ reason }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                Похожие изображения не найдены. Попробуйте другое изображение или сначала загрузите больше изображений в систему.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Функция для обработки drag-and-drop загрузки файлов
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('file');
+        const filePreview = document.getElementById('filePreview');
+        const previewImage = document.getElementById('previewImage');
+        const fileName = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadButton = document.getElementById('uploadButton');
+        const loader = document.getElementById('loader');
+
+        // Обработка клика по зоне загрузки
+        dropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Обработка выбора файла
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        // События Drag & Drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight() {
+            dropZone.classList.remove('highlight');
+        }
+
+        // Обработка Drop события
+        dropZone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Обработка файлов
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+            if (!file.type.match('image.*')) {
+                alert('Пожалуйста, выберите изображение');
+                return;
+            }
+
+            // Отображение предпросмотра
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                fileName.textContent = file.name;
+                dropZone.style.display = 'none';
+                filePreview.style.display = 'block';
+            }
+
+            reader.readAsDataURL(file);
+        }
+
+        // Показать загрузчик при отправке формы
+        uploadForm.addEventListener('submit', function() {
+            uploadButton.disabled = true;
+            loader.style.display = 'block';
+        });
+    });
+</script>
+{% endblock %}

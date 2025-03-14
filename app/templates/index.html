@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Система анализа изображений{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1>Система автоматического анализа изображений</h1>
+                <p class="lead">Обнаружение объектов и распознавание текста с использованием нейронных сетей</p>
+                <p>Загрузите изображение для анализа или используйте другие функции системы.</p>
+                <a href="#upload-section" class="btn btn-primary mt-3">
+                    <i class="bi bi-arrow-down"></i> Загрузить изображение
+                </a>
+            </div>
+            <div class="col-md-6">
+                <img src="https://cdn.jsdelivr.net/gh/ultralytics/assets@main/yolov8/yolo-comparison-plots.png" alt="YOLO Detection Example" class="img-fluid rounded shadow">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container" id="upload-section">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="bi bi-upload"></i> Загрузка изображения</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+<div class="mb-4">
+    <div class="upload-drop-zone" id="dropZone">
+        <i class="bi bi-cloud-arrow-up"></i>
+        <p class="mb-0 fw-medium">Перетащите файл сюда или нажмите для выбора</p>
+        <p class="text-muted small">Поддерживаемые форматы: JPG, PNG, JPEG, BMP, WEBP</p>
+        <input type="file" name="file" id="file" class="form-control d-none" accept=".jpg,.jpeg,.png,.bmp,.webp">
+    </div>
+    <div id="filePreview" class="text-center mt-3" style="display: none;">
+        <img id="previewImage" class="img-fluid rounded shadow mb-3" style="max-height: 300px;">
+        <p id="fileName" class="fw-medium"></p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="detect_text" id="detectText" checked>
+            <label class="form-check-label" for="detectText">
+                Распознавать текст на изображении
+            </label>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="enhanced_detection" id="enhancedDetection" checked>
+            <label class="form-check-label" for="enhancedDetection">
+                Улучшенное обнаружение объектов
+            </label>
+        </div>
+    </div>
+</div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="uploadButton">
+                                <i class="bi bi-image"></i> Анализировать изображение
+                            </button>
+                        </div>
+                        <div class="loader" id="loader"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <h2 class="mb-4 text-center fw-bold">Функциональные возможности</h2>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-image text-primary fs-4"></i>
+                        </div>
+                        <h5 class="card-title mb-0">Обнаружение объектов</h5>
+                    </div>
+                    <p class="card-text">Автоматическое обнаружение объектов на изображениях с использованием YOLOv8. Распознаёт более 80 классов объектов с высокой точностью.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary btn-sm">Попробовать</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-fonts text-primary fs-4"></i>
+                        </div>
+                        <h5 class="card-title mb-0">Распознавание текста</h5>
+                    </div>
+                    <p class="card-text">Извлечение и распознавание текста с изображений с использованием EasyOCR. Поддерживает русский и английский языки.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary btn-sm">Попробовать</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-search text-primary fs-4"></i>
+                        </div>
+                        <h5 class="card-title mb-0">Поиск изображений</h5>
+                    </div>
+                    <p class="card-text">Ищите изображения по объектам и тексту в метаданных. Находите похожие изображения на основе их содержимого.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('search') }}" class="btn btn-outline-primary btn-sm">Перейти к поиску</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-images text-primary fs-4"></i>
+                        </div>
+                        <h5 class="card-title mb-0">Пакетная обработка</h5>
+                    </div>
+                    <p class="card-text">Обрабатывайте несколько изображений одновременно для экономии времени при работе с большими объемами данных.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('batch_process') }}" class="btn btn-outline-primary btn-sm">Перейти к пакетной обработке</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-file-earmark-text text-primary fs-4"></i>
+                        </div>
+                        <h5 class="card-title mb-0">Метаданные</h5>
+                    </div>
+                    <p class="card-text">Автоматическое сохранение метаданных для всех обработанных изображений, включая найденные объекты и распознанный текст.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('view_metadata') }}" class="btn btn-outline-primary btn-sm">Просмотр метаданных</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-image-alt text-primary fs-4"></i>
+                        </div>
+                        <h5 class="card-title mb-0">Поиск похожих изображений</h5>
+                    </div>
+                    <p class="card-text">Загрузите изображение и найдите похожие на него в базе данных на основе содержимого и метаданных.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('find_similar') }}" class="btn btn-outline-primary btn-sm">Найти похожие</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Функция для обработки drag-and-drop загрузки файлов
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('file');
+        const filePreview = document.getElementById('filePreview');
+        const previewImage = document.getElementById('previewImage');
+        const fileName = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadButton = document.getElementById('uploadButton');
+        const loader = document.getElementById('loader');
+
+        // Обработка клика по зоне загрузки
+        dropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Обработка выбора файла
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        // События Drag & Drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight() {
+            dropZone.classList.remove('highlight');
+        }
+
+        // Обработка Drop события
+        dropZone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Обработка файлов
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+            if (!file.type.match('image.*')) {
+                alert('Пожалуйста, выберите изображение');
+                return;
+            }
+
+            // Отображение предпросмотра
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                fileName.textContent = file.name;
+                dropZone.style.display = 'none';
+                filePreview.style.display = 'block';
+            }
+
+            reader.readAsDataURL(file);
+        }
+
+        // Показать загрузчик при отправке формы
+        uploadForm.addEventListener('submit', function() {
+            uploadButton.disabled = true;
+            loader.style.display = 'block';
+        });
+    });
+</script>
+{% endblock %}

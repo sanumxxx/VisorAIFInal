@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск изображений - Система анализа изображений{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                    <li class="breadcrumb-item active">Поиск изображений</li>
+                </ol>
+            </nav>
+            <h1 class="mb-4">Поиск изображений по метаданным</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="bi bi-search"></i> Поисковый запрос</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('search') }}" method="post">
+                        <div class="mb-3">
+                            <label for="query" class="form-label">Что искать?</label>
+                            <input type="text" class="form-control" id="query" name="query" value="{{ query }}" placeholder="Введите объекты или текст для поиска" required>
+                            <div class="form-text">Например: "человек книга", "собака", "привет мир"</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="limit" class="form-label">Максимальное количество результатов</label>
+                            <select class="form-select" id="limit" name="limit">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Искать
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if results is not none %}
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-list-ul"></i> Результаты поиска "{{ query }}" ({{ results|length }})
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if results %}
+                            <div class="row">
+                                {% for result in results %}
+                                <div class="col-md-12 mb-4">
+                                    <div class="card h-100 border-primary metadata-card">
+                                        <div class="card-header bg-light">
+                                            <h5 class="card-title">{{ result.image_name }}</h5>
+                                            <span class="badge bg-primary">Релевантность: {{ result.relevance }}</span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-5">
+                                                    <!-- Отображение изображения -->
+                                                    <div class="text-center">
+        <!-- Используем предсказуемое имя файла с префиксом vis_ -->
+        {% set vis_filename = "vis_" + result.image_name %}
+
+        <img src="{{ url_for('result_file', filename=vis_filename) }}"
+             alt="Обработанное изображение"
+             class="img-fluid rounded shadow mb-3"
+             style="max-height: 250px; max-width: 100%;"
+             onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/image-not-found.png') }}'">
+
+        <div class="btn-group w-100 mt-2">
+            <a href="{{ url_for('result_file', filename=vis_filename) }}"
+               target="_blank"
+               class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-eye"></i> Просмотр
+            </a>
+            <a href="{{ url_for('result_file', filename=vis_filename) }}"
+               download
+               class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download"></i> Скачать
+            </a>
+        </div>
+    </div>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <!-- Метаданные изображения -->
+                                                    <h6 class="border-bottom pb-2 mb-3">Распознанные объекты:</h6>
+                                                    <p>
+                                                        {% if result.metadata.objects %}
+                                                            {% for obj in result.metadata.objects %}
+                                                                {% if obj.lower() in query.lower() %}
+                                                                    <span class="badge bg-info search-highlight">{{ obj }}</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-secondary">{{ obj }}</span>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <span class="text-muted">Нет данных</span>
+                                                        {% endif %}
+                                                    </p>
+
+                                                    <h6 class="border-bottom pb-2 mb-3">Распознанный текст:</h6>
+                                                    <div class="bg-light p-3 rounded mb-3" style="max-height: 150px; overflow-y: auto;">
+                                                        {% if result.metadata.text %}
+                                                            {{ result.metadata.text }}
+                                                        {% else %}
+                                                            <span class="text-muted">Текст не распознан</span>
+                                                        {% endif %}
+                                                    </div>
+
+                                                    <h6 class="border-bottom pb-2 mb-3">Причины совпадения:</h6>
+                                                    <ul class="mb-0">
+                                                        {% for reason in result.match_reasons %}
+                                                            <li>{{ reason }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                По запросу "{{ query }}" ничего не найдено. Попробуйте другой запрос.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

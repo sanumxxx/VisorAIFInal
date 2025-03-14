@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Результаты пакетной обработки - Система анализа изображений{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('batch_process') }}">Пакетная обработка</a></li>
+                    <li class="breadcrumb-item active">Результаты</li>
+                </ol>
+            </nav>
+            <h1 class="mb-4">Результаты пакетной обработки</h1>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-check"></i> Сводка результатов обработки ({{ num_processed }} изображений)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> Обработка завершена успешно. Обработано {{ num_processed }} изображений.
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <a href="{{ url_for('batch_process') }}" class="btn btn-primary">
+                            <i class="bi bi-arrow-left"></i> Вернуться к пакетной обработке
+                        </a>
+                        <a href="{{ url_for('view_metadata') }}" class="btn btn-info">
+                            <i class="bi bi-file-earmark-text"></i> Просмотреть все метаданные
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-images"></i> Обработанные изображения</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Изображение</th>
+                                    <th>Визуализация</th>
+                                    <th>Обнаружено объектов</th>
+                                    <th>Блоков текста</th>
+                                    <th>Распознанный текст</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.original) }}" target="_blank">
+                                            {{ result.original }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Просмотр
+                                        </a>
+                                    </td>
+                                    <td>{{ result.num_objects }}</td>
+                                    <td>{{ result.num_text_blocks }}</td>
+                                    <td>{{ result.text }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.original) }}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-download"></i> Оригинал
+                                            </a>
+                                            <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-download"></i> Результат
+                                            </a>
+                                            <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.json) }}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-download"></i> JSON
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

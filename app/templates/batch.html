@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Пакетная обработка - Система анализа изображений{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                    <li class="breadcrumb-item active">Пакетная обработка</li>
+                </ol>
+            </nav>
+            <h1 class="mb-4">Пакетная обработка изображений</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-images"></i> Загрузка нескольких изображений</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('batch_process') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+                        <div class="mb-3">
+                            <div class="upload-drop-zone" id="dropZone">
+                                <i class="bi bi-cloud-arrow-up display-4"></i>
+                                <p class="mb-0">Перетащите несколько файлов сюда или нажмите для выбора</p>
+                                <input type="file" name="files[]" id="files" class="form-control d-none" multiple accept=".jpg,.jpeg,.png,.bmp,.webp">
+                            </div>
+                            <div id="previewContainer" class="preview-container" style="display: none;"></div>
+                            <div id="fileCounter" class="mt-2" style="display: none;"></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="detect_text" id="detectText" checked>
+                                    <label class="form-check-label" for="detectText">
+                                        Распознавать текст на изображениях
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="uploadButton" disabled>
+                                <i class="bi bi-play"></i> Запустить пакетную обработку
+                            </button>
+                        </div>
+                        <div class="loader" id="loader"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-info-circle"></i> О пакетной обработке</h5>
+                </div>
+                <div class="card-body">
+                    <p>Пакетная обработка позволяет анализировать несколько изображений за один раз, что экономит время при работе с большими объемами данных.</p>
+
+                    <h6>Возможности:</h6>
+                    <ul>
+                        <li>Одновременная загрузка до 20 изображений</li>
+                        <li>Автоматическое распознавание объектов на всех изображениях</li>
+                        <li>Распознавание текста (если включено)</li>
+                        <li>Сохранение метаданных для всех обработанных изображений</li>
+                        <li>Визуализация результатов с выделением объектов и текста</li>
+                    </ul>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb"></i> <strong>Совет:</strong> Для больших объемов изображений рекомендуется обрабатывать их небольшими партиями по 10-20 штук.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropZone = document.getElementById('dropZone');
+        const filesInput = document.getElementById('files');
+        const previewContainer = document.getElementById('previewContainer');
+        const fileCounter = document.getElementById('fileCounter');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadButton = document.getElementById('uploadButton');
+        const loader = document.getElementById('loader');
+
+        let selectedFiles = [];
+
+        // Обработка клика по зоне загрузки
+        dropZone.addEventListener('click', function() {
+            filesInput.click();
+        });
+
+        // Обработка выбора файлов
+        filesInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        // События Drag & Drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight() {
+            dropZone.classList.remove('highlight');
+        }
+
+        // Обработка Drop события
+        dropZone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Обработка файлов
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            // Фильтруем только изображения
+            const imageFiles = Array.from(files).filter(file => file.type.match('image.*'));
+
+            if (imageFiles.length === 0) {
+                alert('Пожалуйста, выберите изображения');
+                return;
+            }
+
+            // Добавляем новые файлы в массив выбранных
+            selectedFiles = [...selectedFiles, ...imageFiles];
+
+            // Обновляем интерфейс
+            updatePreview();
+        }
+
+        // Обновление предпросмотра
+        function updatePreview() {
+            // Очищаем контейнер
+            previewContainer.innerHTML = '';
+
+            // Создаем предпросмотр для каждого файла
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const previewItem = document.createElement('div');
+                previewItem.className = 'preview-item';
+
+                const img = document.createElement('img');
+                img.file = file;
+
+                const removeButton = document.createElement('div');
+                removeButton.className = 'preview-remove';
+                removeButton.innerHTML = '&times;';
+                removeButton.dataset.index = i;
+                removeButton.addEventListener('click', removeFile);
+
+                previewItem.appendChild(img);
+                previewItem.appendChild(removeButton);
+                previewContainer.appendChild(previewItem);
+
+                // Загружаем изображение
+                const reader = new FileReader();
+                reader.onload = (function(aImg) {
+                    return function(e) {
+                        aImg.src = e.target.result;
+                    };
+                })(img);
+                reader.readAsDataURL(file);
+            }
+
+            // Обновляем счетчик файлов
+            fileCounter.textContent = `Выбрано файлов: ${selectedFiles.length}`;
+
+            // Показываем предпросмотр и счетчик, если есть файлы
+            if (selectedFiles.length > 0) {
+                previewContainer.style.display = 'flex';
+                fileCounter.style.display = 'block';
+                dropZone.style.height = 'auto';
+                dropZone.style.padding = '20px';
+                dropZone.innerHTML = '<i class="bi bi-plus-circle"></i> Добавить еще изображения';
+                uploadButton.disabled = false;
+            } else {
+                previewContainer.style.display = 'none';
+                fileCounter.style.display = 'none';
+                dropZone.style.height = '';
+                dropZone.style.padding = '50px';
+                dropZone.innerHTML = '<i class="bi bi-cloud-arrow-up display-4"></i><p class="mb-0">Перетащите несколько файлов сюда или нажмите для выбора</p>';
+                uploadButton.disabled = true;
+            }
+
+            // Обновляем файлы в форме
+            updateFormFiles();
+        }
+
+        // Удаление файла из списка
+        function removeFile(e) {
+            const index = parseInt(e.target.dataset.index);
+            selectedFiles.splice(index, 1);
+            updatePreview();
+        }
+
+        // Обновление файлов в форме
+        function updateFormFiles() {
+            // Создаем новый FileList для формы
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dataTransfer.items.add(file);
+            });
+            filesInput.files = dataTransfer.files;
+        }
+
+        // Показать загрузчик при отправке формы
+        uploadForm.addEventListener('submit', function() {
+            uploadButton.disabled = true;
+            loader.style.display = 'block';
+        });
+    });
+</script>
+{% endblock %}
