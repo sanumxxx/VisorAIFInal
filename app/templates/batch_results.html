@@ -2,6 +2,117 @@
 
 {% block title %}Результаты пакетной обработки - Система анализа изображений{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Специальная настройка для выпадающих меню */
+    .dropdown-menu {
+        position: absolute !important;
+        z-index: 1500 !important;  /* Увеличен z-index */
+        transform: none !important; /* Предотвращаем трансформации Bootstrap */
+    }
+
+    /* Гарантируем, что содержимое ячейки будет корректно позиционироваться */
+    .action-cell {
+        position: static !important; /* Важно для правильного позиционирования */
+    }
+
+    /* Фиксируем обертку выпадающего меню */
+    .dropdown {
+        position: static;
+    }
+
+    /* Поправка для меню, чтобы оно не обрезалось */
+    .table-responsive {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+    }
+
+    /* Дополнительные настройки для мобильного вида */
+    @media (max-width: 768px) {
+        .dropdown-menu {
+            left: auto !important;
+            right: 0 !important;
+        }
+    }
+
+    /* Improved stat card styles */
+    .stat-card {
+        border-radius: 12px;
+        padding: 1.5rem;
+        height: 100%;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card .number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card .label {
+        font-size: 1rem;
+        color: #6c757d;
+    }
+
+    /* Specific card colors with improved contrast */
+    .card-total {
+        background-color: #f8f9fa;
+        border-left: 5px solid #6c757d;
+    }
+
+    .card-success {
+        background-color: #e8f5e9;
+        border-left: 5px solid #2e7d32;
+    }
+
+    .card-success .number {
+        color: #2e7d32;
+    }
+
+    .card-error {
+        background-color: #ffebee;
+        border-left: 5px solid #c62828;
+    }
+
+    .card-error .number {
+        color: #c62828;
+    }
+
+    .card-objects {
+        background-color: #e3f2fd;
+        border-left: 5px solid #1565c0;
+    }
+
+    .card-objects .number {
+        color: #1565c0;
+    }
+
+    .card-text {
+        background-color: #e0f7fa;
+        border-left: 5px solid #00838f;
+    }
+
+    .card-text .number {
+        color: #00838f;
+    }
+
+    /* Стили для кнопок экспорта метаданных */
+    .metadata-group .btn {
+        text-align: left;
+    }
+
+    .metadata-group .btn i {
+        margin-right: 8px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row">
@@ -17,90 +128,707 @@
         </div>
     </div>
 
+    <!-- Сводная информация о результатах -->
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-list-check"></i> Сводка результатов обработки ({{ num_processed }} изображений)
+                        <i class="bi bi-list-check"></i> Сводка обработки
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> Обработка завершена успешно. Обработано {{ num_processed }} изображений.
-                    </div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <!-- Подсчет статистики -->
+                            {% set total_files = results|length %}
+                            {% set success_count = 0 %}
+                            {% set error_count = 0 %}
+                            {% set total_objects = 0 %}
+                            {% set total_text_blocks = 0 %}
 
-                    <div class="d-flex justify-content-between mb-3">
-                        <a href="{{ url_for('batch_process') }}" class="btn btn-primary">
-                            <i class="bi bi-arrow-left"></i> Вернуться к пакетной обработке
-                        </a>
-                        <a href="{{ url_for('view_metadata') }}" class="btn btn-info">
-                            <i class="bi bi-file-earmark-text"></i> Просмотреть все метаданные
-                        </a>
+                            {% for result in results %}
+                                {% if result.status is defined and result.status == 'success' %}
+                                    {% set success_count = success_count + 1 %}
+
+                                    {% if result.num_objects is defined and result.num_objects is not none %}
+                                        {% set total_objects = total_objects + result.num_objects %}
+                                    {% endif %}
+
+                                    {% if result.num_text_blocks is defined and result.num_text_blocks is not none %}
+                                        {% set total_text_blocks = total_text_blocks + result.num_text_blocks %}
+                                    {% endif %}
+                                {% else %}
+                                    {% set error_count = error_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+
+                            <!-- Если данные приходят напрямую из batch_metadata, используем их -->
+                            {% if batch_metadata is defined and batch_metadata %}
+                                {% if batch_metadata.total_files is defined %}
+                                    {% set total_files = batch_metadata.total_files %}
+                                {% endif %}
+
+                                {% if batch_metadata.success_count is defined %}
+                                    {% set success_count = batch_metadata.success_count %}
+                                {% endif %}
+
+                                {% if batch_metadata.error_count is defined %}
+                                    {% set error_count = batch_metadata.error_count %}
+                                {% endif %}
+
+                                {% if batch_metadata.total_objects is defined %}
+                                    {% set total_objects = batch_metadata.total_objects %}
+                                {% endif %}
+
+                                {% if batch_metadata.total_text_blocks is defined %}
+                                    {% set total_text_blocks = batch_metadata.total_text_blocks %}
+                                {% endif %}
+                            {% endif %}
+
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="stat-card card-total">
+                                        <div class="text-center">
+                                            <div class="number">{{ total_files }}</div>
+                                            <div class="label">Всего файлов</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="stat-card card-success">
+                                        <div class="text-center">
+                                            <div class="number">{{ success_count }}</div>
+                                            <div class="label">Успешно обработано</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="stat-card card-error">
+                                        <div class="text-center">
+                                            <div class="number">{{ error_count }}</div>
+                                            <div class="label">Ошибок</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="stat-card card-objects">
+                                        <div class="text-center">
+                                            <div class="number">{{ total_objects }}</div>
+                                            <div class="label">Обнаружено объектов</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="stat-card card-text">
+                                        <div class="text-center">
+                                            <div class="number">{{ total_text_blocks }}</div>
+                                            <div class="label">Блоков текста</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <!-- Секция с кнопками действий и метаданными -->
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('batch_process') }}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> Новая пакетная обработка
+                                </a>
+
+                                <div class="dropdown metadata-group">
+                                    <button class="btn btn-outline-primary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-file-earmark-text"></i> Метаданные
+                                    </button>
+                                    <ul class="dropdown-menu w-100 shadow">
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center" href="{{ url_for('view_metadata') }}">
+                                                <i class="bi bi-table"></i> Просмотреть все метаданные
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename='metadata.xml') }}" download>
+                                                <i class="bi bi-file-earmark-code"></i> Скачать метаданные (XML)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center" href="#" id="jsonMetadataBtn">
+                                                <i class="bi bi-filetype-json"></i> Скачать метаданные (JSON)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center" href="#" id="csvMetadataBtn">
+                                                <i class="bi bi-filetype-csv"></i> Экспорт в CSV
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <button id="downloadAllBtn" class="btn btn-outline-secondary">
+                                    <i class="bi bi-download"></i> Скачать все результаты (ZIP)
+                                </button>
+                            </div>
+
+                            <div class="alert alert-light mt-3">
+                                <small>
+                                    <i class="bi bi-info-circle"></i> Идентификатор пакета: {{ batch_id }}
+                                    {% if batch_metadata and batch_metadata.timestamp %}
+                                    <br>Обработка завершена: {{ batch_metadata.timestamp }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Список результатов обработки -->
     <div class="row">
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0"><i class="bi bi-images"></i> Обработанные изображения</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Изображение</th>
-                                    <th>Визуализация</th>
-                                    <th>Обнаружено объектов</th>
-                                    <th>Блоков текста</th>
-                                    <th>Распознанный текст</th>
-                                    <th>Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for result in results %}
-                                <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td>
-                                        <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.original) }}" target="_blank">
-                                            {{ result.original }}
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-eye"></i> Просмотр
-                                        </a>
-                                    </td>
-                                    <td>{{ result.num_objects }}</td>
-                                    <td>{{ result.num_text_blocks }}</td>
-                                    <td>{{ result.text }}</td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.original) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download"></i> Оригинал
-                                            </a>
-                                            <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download"></i> Результат
-                                            </a>
-                                            <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.json) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download"></i> JSON
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-light" id="gridViewBtn" title="Сетка">
+                            <i class="bi bi-grid"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light active" id="listViewBtn" title="Список">
+                            <i class="bi bi-list"></i>
+                        </button>
                     </div>
+                </div>
+
+                <div class="card-body">
+                    <!-- Поиск и фильтрация -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Поиск по имени файла...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="statusFilter">
+                                <option value="all" selected>Все файлы</option>
+                                <option value="success">Только успешные</option>
+                                <option value="error">Только с ошибками</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="sortOrder">
+                                <option value="name" selected>По имени</option>
+                                <option value="objects">По числу объектов</option>
+                                <option value="text">По числу текста</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Вид "Список" (по умолчанию) -->
+                    <div id="listView">
+                        <!-- Особое внимание к этому диву с overflow-visible вместо table-responsive -->
+                        <div style="position: relative; overflow: visible;">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th width="20%">Файл</th>
+                                        <th width="15%">Результат</th>
+                                        <th width="10%">Объекты</th>
+                                        <th width="10%">Текст</th>
+                                        <th width="25%">Распознанный текст</th>
+                                        <th width="15%">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for result in results %}
+                                    <tr class="result-row" data-status="{{ result.status|default('error') }}" data-filename="{{ result.original }}">
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <div class="fw-medium text-wrap">{{ result.original }}</div>
+                                            {% if result.file_size %}
+                                                <small class="text-muted">{{ result.file_size }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if result.status is defined and result.status == 'success' %}
+                                                <div class="d-flex align-items-center">
+                                                    <img src="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}"
+                                                         class="img-thumbnail me-2" style="width: 50px; height: 50px; object-fit: cover;"
+                                                         alt="{{ result.original }}">
+                                                    <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}"
+                                                       target="_blank" class="btn btn-sm btn-outline-primary">
+                                                       <i class="bi bi-eye"></i>
+                                                    </a>
+                                                </div>
+                                            {% else %}
+                                                <span class="badge bg-danger">Ошибка</span>
+                                                {% if result.error_message %}
+                                                    <small class="d-block text-danger">{{ result.error_message }}</small>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ result.num_objects|default('-') }}</td>
+                                        <td>{{ result.num_text_blocks|default('-') }}</td>
+                                        <td>
+                                            {% if result.text %}
+                                                <div class="text-truncate" style="max-width: 200px;" title="{{ result.text }}">
+                                                    {{ result.text }}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="action-cell">
+                                            {% if result.status is defined and result.status == 'success' %}
+                                                <!-- Полностью переработанное меню действий -->
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        Действия
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                        <li>
+                                                            <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename=result.original) }}" download>
+                                                                <i class="bi bi-download me-2"></i>
+                                                                <span>Скачать оригинал</span>
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}" download>
+                                                                <i class="bi bi-download me-2"></i>
+                                                                <span>Скачать результат</span>
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename=result.json) }}" download>
+                                                                <i class="bi bi-file-earmark-code me-2"></i>
+                                                                <span>Скачать JSON</span>
+                                                            </a>
+                                                        </li>
+                                                        <li class="dropdown-divider"></li>
+                                                        <!-- Новый пункт меню для скачивания метаданных -->
+                                                        <li>
+                                                            <a class="dropdown-item d-flex align-items-center download-metadata"
+                                                               href="#" data-filename="{{ result.original }}">
+                                                                <i class="bi bi-file-earmark-text me-2"></i>
+                                                                <span>Скачать метаданные (XML)</span>
+                                                            </a>
+                                                        </li>
+                                                        <li class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item d-flex align-items-center view-details" href="#" data-filename="{{ result.original }}">
+                                                                <i class="bi bi-info-circle me-2"></i>
+                                                                <span>Подробнее</span>
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Вид "Сетка" (скрыт по умолчанию) -->
+                    <div id="gridView" class="row g-3" style="display: none;">
+                        {% for result in results %}
+                        <div class="col-md-3 col-sm-4 col-6 result-row" data-status="{{ result.status|default('error') }}" data-filename="{{ result.original }}">
+                            <div class="card h-100 {% if result.status is not defined or result.status != 'success' %}border-danger{% else %}border-light{% endif %}">
+                                <div class="position-relative">
+                                    {% if result.status is defined and result.status == 'success' %}
+                                        <img src="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}"
+                                             class="card-img-top" style="height: 160px; object-fit: cover;"
+                                             alt="{{ result.original }}">
+                                    {% else %}
+                                        <div class="d-flex align-items-center justify-content-center bg-light" style="height: 160px;">
+                                            <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                                        </div>
+                                    {% endif %}
+
+                                    {% if result.status is defined and result.status == 'success' %}
+                                    <div class="position-absolute bottom-0 end-0 m-2">
+                                        <a href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}"
+                                           target="_blank" class="btn btn-sm btn-primary rounded-circle">
+                                           <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="card-body p-2">
+                                    <h6 class="card-title text-truncate mb-1" title="{{ result.original }}">
+                                        {{ result.original }}
+                                    </h6>
+
+                                    <div class="d-flex justify-content-between mb-2">
+                                        {% if result.status is defined and result.status == 'success' %}
+                                            <span class="badge bg-success">Успешно</span>
+                                            <span class="badge bg-light text-dark">{{ result.file_size|default('') }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Ошибка</span>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if result.status is defined and result.status == 'success' %}
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-primary"><i class="bi bi-tag"></i> {{ result.num_objects|default('0') }}</span>
+                                        <span class="text-info"><i class="bi bi-fonts"></i> {{ result.num_text_blocks|default('0') }}</span>
+                                        <div class="dropdown">
+                                            <span class="text-secondary dropdown-toggle" style="cursor: pointer;" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </span>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename=result.original) }}" download>
+                                                        <i class="bi bi-download me-2"></i>
+                                                        <span>Оригинал</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename=result.visualized) }}" download>
+                                                        <i class="bi bi-download me-2"></i>
+                                                        <span>Результат</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('batch_download', batch_id=batch_id, filename=result.json) }}" download>
+                                                        <i class="bi bi-file-earmark-code me-2"></i>
+                                                        <span>JSON</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center download-metadata"
+                                                       href="#" data-filename="{{ result.original }}">
+                                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                                        <span>Метаданные</span>
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center view-details" href="#" data-filename="{{ result.original }}">
+                                                        <i class="bi bi-info-circle me-2"></i>
+                                                        <span>Подробнее</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Сообщение, если нет результатов после фильтрации -->
+                    <div id="noResults" class="alert alert-info" style="display: none;">
+                        <i class="bi bi-info-circle"></i> Нет результатов, соответствующих критериям поиска.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно с подробной информацией -->
+    <div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailsModalLabel">Подробная информация</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="detailsModalBody">
+                    <!-- Будет заполнено через JavaScript -->
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <p class="mt-2">Загрузка информации...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="btn-group me-auto">
+                        <button type="button" class="btn btn-outline-primary" id="modalDownloadMetadata">
+                            <i class="bi bi-file-earmark-text"></i> Скачать метаданные
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Убедимся, что Bootstrap 5 правильно инициализирует все выпадающие меню
+        var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+        var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+            return new bootstrap.Dropdown(dropdownToggleEl, {
+                // Отключаем автоматическое выравнивание и позиционирование
+                autoClose: true,
+                boundary: 'viewport',
+                reference: 'toggle',
+                display: 'dynamic'
+            });
+        });
+
+        // Переключение между видами "список" и "сетка"
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const listView = document.getElementById('listView');
+        const gridView = document.getElementById('gridView');
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const sortOrder = document.getElementById('sortOrder');
+        const resultRows = document.querySelectorAll('.result-row');
+        const noResults = document.getElementById('noResults');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+        // Переключение на сетку
+        gridViewBtn.addEventListener('click', function() {
+            gridView.style.display = 'flex';
+            listView.style.display = 'none';
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+        });
+
+        // Переключение на список
+        listViewBtn.addEventListener('click', function() {
+            listView.style.display = 'block';
+            gridView.style.display = 'none';
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+        });
+
+        // Функция фильтрации результатов
+        function filterResults() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const status = statusFilter.value;
+            let visibleCount = 0;
+
+            resultRows.forEach(row => {
+                const fileName = row.getAttribute('data-filename').toLowerCase();
+                const rowStatus = row.getAttribute('data-status');
+
+                const matchesSearch = fileName.includes(searchTerm);
+                const matchesStatus = status === 'all' || rowStatus === status;
+
+                // Показать или скрыть строку
+                if (matchesSearch && matchesStatus) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Показываем сообщение, если нет результатов
+            if (visibleCount === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+            }
+        }
+
+        // Обработчики для фильтров
+        searchInput.addEventListener('input', filterResults);
+        statusFilter.addEventListener('change', filterResults);
+
+        // Сортировка результатов
+        sortOrder.addEventListener('change', function() {
+            const value = this.value;
+
+            // Получаем списки строк (для обоих представлений)
+            const listRows = Array.from(document.querySelectorAll('#listView tbody tr'));
+            const gridItems = Array.from(document.querySelectorAll('#gridView > div'));
+
+            // Функция сортировки
+            function sortItems(items, selector) {
+                return items.sort((a, b) => {
+                    if (value === 'name') {
+                        const nameA = a.getAttribute('data-filename').toLowerCase();
+                        const nameB = b.getAttribute('data-filename').toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    } else if (value === 'objects') {
+                        const objCountA = parseInt(a.querySelector(selector === 'list' ? 'td:nth-child(4)' : '.bi-tag').textContent) || 0;
+                        const objCountB = parseInt(b.querySelector(selector === 'list' ? 'td:nth-child(4)' : '.bi-tag').textContent) || 0;
+                        return objCountB - objCountA; // По убыванию
+                    } else if (value === 'text') {
+                        const textCountA = parseInt(a.querySelector(selector === 'list' ? 'td:nth-child(5)' : '.bi-fonts').textContent) || 0;
+                        const textCountB = parseInt(b.querySelector(selector === 'list' ? 'td:nth-child(5)' : '.bi-fonts').textContent) || 0;
+                        return textCountB - textCountA; // По убыванию
+                    }
+                    return 0;
+                });
+            }
+
+            // Сортировка табличного вида
+            const sortedListRows = sortItems(listRows, 'list');
+            const tableBody = document.querySelector('#listView tbody');
+            sortedListRows.forEach(row => tableBody.appendChild(row));
+
+            // Сортировка сеточного вида
+            const sortedGridItems = sortItems(gridItems, 'grid');
+            sortedGridItems.forEach(item => gridView.appendChild(item));
+        });
+
+        // Модальное окно с деталями
+        const detailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
+        const detailsModalLabel = document.getElementById('detailsModalLabel');
+        const detailsModalBody = document.getElementById('detailsModalBody');
+        const modalDownloadMetadata = document.getElementById('modalDownloadMetadata');
+        let currentModalFilename = null;
+
+        // Открытие модального окна с деталями
+        document.querySelectorAll('.view-details').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const filename = this.getAttribute('data-filename');
+                currentModalFilename = filename;
+
+                // Обновляем заголовок
+                detailsModalLabel.textContent = `Информация о файле: ${filename}`;
+
+                // Ищем информацию о файле
+                const fileData = Array.from(resultRows).find(row =>
+                    row.getAttribute('data-filename') === filename
+                );
+
+                if (fileData) {
+                    // В реальном приложении здесь был бы запрос к серверу
+                    // За подробной информацией из JSON файла
+
+                    // Создаем содержимое модального окна
+                    let content = '';
+
+                    if (fileData.getAttribute('data-status') === 'success') {
+                        const batchId = '{{ batch_id }}';
+
+                        // Получаем информацию о результате из строки таблицы
+                        const objCount = fileData.querySelector('td:nth-child(4)') ?
+                            fileData.querySelector('td:nth-child(4)').textContent : '0';
+                        const textCount = fileData.querySelector('td:nth-child(5)') ?
+                            fileData.querySelector('td:nth-child(5)').textContent : '0';
+
+                        content = `
+                            <div class="text-center mb-4">
+                                <img src="${window.location.origin}/batch_download/${batchId}/vis_${filename}"
+                                     alt="${filename}" class="img-fluid rounded shadow"
+                                     style="max-height: 300px;">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="border-bottom pb-2 mb-3">Общая информация</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td>Имя файла:</td>
+                                            <td>${filename}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Обнаружено объектов:</td>
+                                            <td>${objCount}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Блоков текста:</td>
+                                            <td>${textCount}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="border-bottom pb-2 mb-3">Просмотр и скачивание</h6>
+                                    <div class="d-grid gap-2">
+                                        <a href="${window.location.origin}/batch_download/${batchId}/${filename}"
+                                           class="btn btn-outline-primary" download>
+                                           <i class="bi bi-download"></i> Скачать оригинал
+                                        </a>
+                                        <a href="${window.location.origin}/batch_download/${batchId}/vis_${filename}"
+                                           class="btn btn-outline-primary" download>
+                                           <i class="bi bi-download"></i> Скачать результат
+                                        </a>
+                                        <a href="${window.location.origin}/batch_download/${batchId}/${filename.split('.')[0]}.json"
+                                           class="btn btn-outline-secondary" download>
+                                           <i class="bi bi-code"></i> Скачать JSON-данные
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        content = `
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle"></i> Произошла ошибка при обработке файла.
+                                <p class="mt-2">${fileData.querySelector('.text-danger') ?
+                                    fileData.querySelector('.text-danger').textContent : 'Причина ошибки неизвестна.'}</p>
+                            </div>
+                        `;
+                    }
+
+                    detailsModalBody.innerHTML = content;
+                } else {
+                    detailsModalBody.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-circle"></i> Информация о файле не найдена.
+                        </div>
+                    `;
+                }
+
+                detailsModal.show();
+            });
+        });
+
+        // Обработчик для кнопки скачивания метаданных в модальном окне
+        modalDownloadMetadata.addEventListener('click', function() {
+            if (currentModalFilename) {
+                downloadMetadata(currentModalFilename);
+            }
+        });
+
+        // Обработчики для скачивания метаданных отдельных файлов
+        document.querySelectorAll('.download-metadata').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const filename = this.getAttribute('data-filename');
+                downloadMetadata(filename);
+            });
+        });
+
+        // Функция скачивания метаданных
+        function downloadMetadata(filename) {
+    // Перенаправляем на серверный маршрут, который вернет файл метаданных
+    window.location.href = `/download_metadata/${filename}`;
+}
+
+        // Обработчики для кнопок экспорта метаданных
+        document.getElementById('jsonMetadataBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            // Имитация скачивания метаданных в формате JSON
+            alert('Функция экспорта метаданных в JSON будет добавлена в ближайшем обновлении.');
+        });
+
+        document.getElementById('csvMetadataBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            // Имитация скачивания метаданных в формате CSV
+            alert('Функция экспорта метаданных в CSV будет добавлена в ближайшем обновлении.');
+        });
+
+        // Скачивание всех результатов
+        downloadAllBtn.addEventListener('click', function() {
+            alert('Функция скачивания всех результатов будет добавлена в будущих обновлениях.');
+        });
+    });
+</script>
 {% endblock %}

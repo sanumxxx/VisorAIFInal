@@ -417,6 +417,74 @@ def show_result(result_id):
         results=results
     )
 
+
+@app.route('/download_metadata/<filename>')
+def download_metadata(filename):
+    """Скачивание метаданных для конкретного файла"""
+    try:
+        import xml.etree.ElementTree as ET
+        import xml.dom.minidom as minidom
+
+        # Получаем имя файла без расширения для поиска в XML
+        base_name = os.path.splitext(filename)[0]
+
+        # Читаем метаданные из общего файла
+        metadata_list = recognizer.read_metadata_from_xml(app.config['METADATA_FILE'])
+        if not metadata_list:
+            flash('Метаданные не найдены', 'error')
+            return redirect(url_for('index'))
+
+        # Ищем метаданные для конкретного файла
+        image_metadata = None
+        for item in metadata_list:
+            if item['name'] == filename:
+                image_metadata = item
+                break
+
+        if not image_metadata:
+            flash(f'Метаданные для файла {filename} не найдены', 'warning')
+            return redirect(url_for('index'))
+
+        # Создаем XML-документ для этого файла
+        root = ET.Element("metadata")
+        image_elem = ET.SubElement(root, "image")
+        image_elem.set("name", filename)
+
+        # Добавляем объекты
+        if 'objects' in image_metadata and image_metadata['objects']:
+            obj_elem = ET.SubElement(image_elem, "object")
+            obj_elem.text = " ".join(image_metadata['objects'])
+
+        # Добавляем текст
+        if 'text' in image_metadata and image_metadata['text']:
+            text_elem = ET.SubElement(image_elem, "text")
+            text_elem.text = image_metadata['text']
+
+        # Преобразуем в строку XML
+        xml_str = ET.tostring(root, encoding='utf-8')
+        pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
+
+        # Формируем имя файла для скачивания
+        download_name = f"metadata_{base_name}.xml"
+
+        # Создаем временный файл
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], download_name)
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            f.write(pretty_xml)
+
+        # Отправляем файл пользователю
+        return send_file(
+            temp_path,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype='application/xml'
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при скачивании метаданных: {e}")
+        flash(f'Ошибка при скачивании метаданных: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
 @app.route('/download/<result_id>/<file_type>')
 def download_file(result_id, file_type):
     """Скачивание файлов результатов"""
@@ -779,9 +847,10 @@ def result_file(filename):
         logger.error(f"Ошибка при отдаче файла {filename}: {str(e)}")
         return abort(500)
 
+
 @app.route('/batch_process', methods=['GET', 'POST'])
 def batch_process():
-    """Пакетная обработка изображений"""
+    """Пакетная обработка изображений с расширенными возможностями"""
     if request.method == 'POST':
         # Проверка наличия файлов
         if 'files[]' not in request.files:
@@ -800,13 +869,26 @@ def batch_process():
             flash('Ошибка инициализации модуля распознавания. Попробуйте позже.', 'error')
             return redirect(url_for('index'))
 
+        # Получение пользовательских настроек
+        confidence_threshold = float(request.form.get('confidence_threshold', 0.25))
+        model_size = request.form.get('model_size', 'm')
+        detect_text = 'detect_text' in request.form
+        enhanced_detection = 'enhanced_detection' in request.form
+        use_masks = 'use_masks' in request.form
+        use_image_enhancement = 'use_image_enhancement' in request.form
+
         # Проверяем статус OCR
         if hasattr(recognizer, 'ocr_enabled'):
             logger.info(f"Статус OCR перед пакетной обработкой: {recognizer.ocr_enabled}")
-            # Принудительно включаем OCR, если это необходимо
-            if not recognizer.ocr_enabled:
-                recognizer.ocr_enabled = True
-                logger.info("Принудительно включен OCR перед пакетной обработкой")
+            # Принудительно включаем OCR, если пользователь выбрал эту опцию
+            recognizer.ocr_enabled = detect_text
+            logger.info(f"OCR установлен в {detect_text} перед пакетной обработкой")
+
+        # Обновляем другие параметры распознавателя
+        recognizer.confidence_threshold = confidence_threshold
+        recognizer.model_size = model_size
+        recognizer.use_masks = use_masks
+        recognizer.use_image_enhancement = use_image_enhancement
 
         # Создаем временную директорию для пакетной обработки
         batch_id = str(uuid.uuid4())
@@ -814,14 +896,19 @@ def batch_process():
         os.makedirs(batch_folder, exist_ok=True)
 
         processed_files = []
+        error_files = []
 
         # Сохраняем все файлы
         for file in files:
             if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file_path = os.path.join(batch_folder, filename)
-                file.save(file_path)
-                processed_files.append(filename)
+                try:
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(batch_folder, filename)
+                    file.save(file_path)
+                    processed_files.append(filename)
+                except Exception as e:
+                    logger.error(f"Ошибка при сохранении файла {file.filename}: {e}")
+                    error_files.append((file.filename, str(e)))
 
         if len(processed_files) == 0:
             flash('Нет допустимых файлов для обработки', 'error')
@@ -832,27 +919,12 @@ def batch_process():
             output_folder = os.path.join(app.config['RESULTS_FOLDER'], f"batch_{batch_id}")
             os.makedirs(output_folder, exist_ok=True)
 
-            # Модифицируем функцию batch_process для принудительного включения распознавания текста
-            original_batch_process = recognizer.batch_process
-
-            def patched_batch_process(*args, **kwargs):
-                # Убедимся, что OCR включен перед обработкой
-                if hasattr(recognizer, 'ocr_enabled'):
-                    recognizer.ocr_enabled = True
-                return original_batch_process(*args, **kwargs)
-
-            # Временно заменяем функцию
-            recognizer.batch_process = patched_batch_process
-
             # Запускаем пакетную обработку
             batch_results = recognizer.batch_process(
                 batch_folder,
                 output_folder,
                 metadata_file=app.config['METADATA_FILE']
             )
-
-            # Восстанавливаем оригинальную функцию
-            recognizer.batch_process = original_batch_process
 
             if 'error' in batch_results:
                 flash(f"Ошибка при пакетной обработке: {batch_results['error']}", 'error')
@@ -868,9 +940,10 @@ def batch_process():
 
     return render_template('batch.html')
 
+
 @app.route('/batch_results/<batch_id>')
 def batch_results(batch_id):
-    """Отображение результатов пакетной обработки"""
+    """Отображение результатов пакетной обработки с улучшенным интерфейсом"""
     batch_folder = os.path.join(app.config['UPLOAD_FOLDER'], f"batch_{batch_id}")
     output_folder = os.path.join(app.config['RESULTS_FOLDER'], f"batch_{batch_id}")
 
@@ -882,6 +955,11 @@ def batch_results(batch_id):
     original_files = [f for f in os.listdir(batch_folder) if allowed_file(f)]
 
     results = []
+    success_count = 0
+    error_count = 0
+    total_objects = 0
+    total_text_blocks = 0
+
     for filename in original_files:
         base_name = os.path.splitext(filename)[0]
         visualized_path = os.path.join(output_folder, f"vis_{filename}")
@@ -889,26 +967,82 @@ def batch_results(batch_id):
 
         # Проверяем наличие файлов результатов
         if os.path.exists(visualized_path) and os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                json_data = json.load(f)
+            success_count += 1
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    json_data = json.load(f)
 
-            num_objects = len(json_data.get('objects', []))
-            num_text_blocks = len(json_data.get('text_blocks', []))
-            all_text = json_data.get('all_text', '')
+                num_objects = len(json_data.get('objects', []))
+                num_text_blocks = len(json_data.get('text_blocks', []))
+                all_text = json_data.get('all_text', '')
 
+                total_objects += num_objects
+                total_text_blocks += num_text_blocks
+
+                # Получаем время обработки из метаданных, если доступно
+                processing_time = None
+                if 'processing_info' in json_data and 'timestamp' in json_data['processing_info']:
+                    processing_time = json_data['processing_info']['timestamp']
+
+                # Получаем размер исходного файла
+                file_path = os.path.join(batch_folder, filename)
+                file_size = os.path.getsize(file_path) if os.path.exists(file_path) else None
+                file_size_formatted = None
+                if file_size:
+                    if file_size < 1024:
+                        file_size_formatted = f"{file_size} B"
+                    elif file_size < 1048576:
+                        file_size_formatted = f"{file_size / 1024:.1f} KB"
+                    else:
+                        file_size_formatted = f"{file_size / 1048576:.1f} MB"
+
+                results.append({
+                    'original': filename,
+                    'visualized': f"vis_{filename}",
+                    'json': f"{base_name}.json",
+                    'num_objects': num_objects,
+                    'num_text_blocks': num_text_blocks,
+                    'text': all_text[:100] + '...' if len(all_text) > 100 else all_text,
+                    'processing_time': processing_time,
+                    'file_size': file_size_formatted,
+                    'status': 'success'
+                })
+            except Exception as e:
+                logger.error(f"Ошибка при чтении данных результата для {filename}: {e}")
+                error_count += 1
+                results.append({
+                    'original': filename,
+                    'status': 'error',
+                    'error_message': str(e)
+                })
+        else:
+            error_count += 1
             results.append({
                 'original': filename,
-                'visualized': f"vis_{filename}",
-                'json': f"{base_name}.json",
-                'num_objects': num_objects,
-                'num_text_blocks': num_text_blocks,
-                'text': all_text[:100] + '...' if len(all_text) > 100 else all_text
+                'status': 'error',
+                'error_message': 'Файлы результатов не найдены'
             })
+
+    # Сортируем результаты: сначала успешные, затем ошибки
+    results.sort(key=lambda x: x['status'] == 'error')
+
+    # Метаданные о пакетной обработке
+    batch_metadata = {
+        'total_files': len(original_files),
+        'success_count': success_count,
+        'error_count': error_count,
+        'total_objects': total_objects,
+        'total_text_blocks': total_text_blocks,
+        'batch_id': batch_id,
+        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
     return render_template('batch_results.html',
                            batch_id=batch_id,
                            results=results,
-                           num_processed=len(results))
+                           batch_metadata=batch_metadata)
+
+
 
 @app.route('/batch_download/<batch_id>/<filename>')
 def batch_download(batch_id, filename):
