@@ -4,13 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4f497092-f7f3-4fc8-928d-7c028ad50b55" name="Changes" comment="v.0">
+    <list default="true" id="4f497092-f7f3-4fc8-928d-7c028ad50b55" name="Changes" comment="v.01">
+      <change afterPath="$PROJECT_DIR$/app/Dockerfile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker-compose.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/metadata/metadata.xml" beforeDir="false" afterPath="$PROJECT_DIR$/app/metadata/metadata.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/base.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/batch.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/batch.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/batch_results.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/batch_results.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/metadata/metadata.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/results/vis_rEs_Zb3EWOo.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/results/vis_rEs_Zb3EWOo.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/uploads/rEs_Zb3EWOo_13d762e1-5ce3-4e48-9775-5ea73b46d7e3.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/uploads/rEs_Zb3EWOo_b7f1004e-d690-4675-b43d-12909db1b9c7.jpg" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,6 +88,7 @@
       <recent name="D:\DEV\VisorAI" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\DEV\VisorAI\app" />
       <recent name="D:\DEV\VisorAI\hackathon-VisorAI-\frontend\src\components\ResultsView" />
     </key>
   </component>
@@ -104,7 +108,8 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1741944741069</updated>
-      <workItem from="1741944742228" duration="30827000" />
+      <workItem from="1741944742228" duration="31238000" />
+      <workItem from="1742029669883" duration="2680000" />
     </task>
     <task id="LOCAL-00001" summary="v.0">
       <option name="closed" value="true" />
@@ -122,7 +127,15 @@
       <option name="project" value="LOCAL" />
       <updated>1741994863539</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="v.01">
+      <option name="closed" value="true" />
+      <created>1742029163142</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1742029163142</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -144,7 +157,8 @@
       <path value="$PROJECT_DIR$/hackathon-VisorAI-" />
     </ignored-roots>
     <MESSAGE value="v.0" />
-    <option name="LAST_COMMIT_MESSAGE" value="v.0" />
+    <MESSAGE value="v.01" />
+    <option name="LAST_COMMIT_MESSAGE" value="v.01" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -159,7 +173,7 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/VisorAI$yolo_usage_example.coverage" NAME="yolo_usage_example Coverage Results" MODIFIED="1741981275467" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VisorAI$app.coverage" NAME="app Coverage Results" MODIFIED="1742025964549" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app" />
+    <SUITE FILE_PATH="coverage/VisorAI$app.coverage" NAME="app Coverage Results" MODIFIED="1742030500926" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/app" />
     <SUITE FILE_PATH="coverage/VisorAI$yolo_segmentation.coverage" NAME="yolo_segmentation Coverage Results" MODIFIED="1741979072308" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VisorAI$example_usage.coverage" NAME="example_usage Coverage Results" MODIFIED="1741962732178" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>

@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+  image-analysis:
+    build: ..
+    container_name: image-analysis-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./app:/app
+      - image-uploads:/app/uploads
+      - image-results:/app/results
+      - image-metadata:/app/metadata
+      - image-models:/app/models
+    environment:
+      - SECRET_KEY=your_secret_key_here
+      - FLASK_ENV=production
+    restart: unless-stopped
+
+volumes:
+  image-uploads:
+  image-results:
+  image-metadata:
+  image-models:
